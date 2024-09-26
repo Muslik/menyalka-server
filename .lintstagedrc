@@ -1,0 +1,4 @@
+{
+  "*.ts": ["prettier --write", "eslint --fix"],
+  "{*.json,.prettierrc,.lintstagedrc,.eslintrc}": ["prettier --write --parser json"]
+}
