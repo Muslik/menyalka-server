@@ -16,7 +16,6 @@ COPY --from=build /app/node_modules ./node_modules
 RUN pnpm store prune
 RUN chown -R appuser:appgroup /app
 USER appuser
-# EXPOSE 4000
 CMD ["pnpm", "start:prod"]
 
 FROM base AS development
@@ -26,6 +25,5 @@ ENV NODE_ENV=development
 RUN pnpm install
 COPY . .
 RUN chown -R appuser:appgroup /app
-# EXPOSE 4000
 USER appuser
 CMD ["pnpm", "start:dev"]

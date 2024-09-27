@@ -5,6 +5,7 @@ export const NODE_ENV = process.env.NODE_ENV ?? 'development';
 
 export type Config = {
   port: number;
+  host: string;
   isProduction: boolean;
   isDevelopment: boolean;
   isTest: boolean;
@@ -19,6 +20,7 @@ export type Config = {
 
 export const config = (): Config => {
   return {
+    host: process.env.HOST || '0.0.0.0',
     port: parseInt(process.env.PORT || '', 10) || 3000,
     isProduction: NODE_ENV === 'production',
     isDevelopment: NODE_ENV === 'development',

@@ -4,7 +4,9 @@ import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { Logger } from 'nestjs-pino';
 
 import { AppModule } from './app.module';
-import { NODE_ENV } from './infrastructure/config';
+import { NODE_ENV, config } from './infrastructure/config';
+
+const { port, host } = config();
 
 const getLoggerType = (): LogLevel[] => {
   if (NODE_ENV === 'production') {
@@ -20,6 +22,6 @@ async function bootstrap() {
     bufferLogs: true,
   });
   app.useLogger(app.get(Logger));
-  await app.listen(4000, '0.0.0.0');
+  await app.listen(port, host);
 }
 bootstrap();

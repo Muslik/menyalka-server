@@ -4,7 +4,6 @@ on: [push]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     strategy:
@@ -12,19 +11,19 @@ jobs:
         node-version: [22.x]
 
     steps:
-    - uses: pnpm/action-setup@v4
-      with:
-        version: 9
-    - uses: actions/checkout@v2
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v2
-      with:
-        node-version: ${{ matrix.node-version }}
-    - name: Install packages
-      run: pnpm install
-    - name: Lint code
-      run: pnpm check:lint
-    - name: Run unit tests
-      run: pnpm test
-    - name: Build project
-      run: pnpm build
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install packages
+        run: pnpm install
+      - name: Lint code
+        run: pnpm lint:check
+      - name: Run unit tests
+        run: pnpm test
+      - name: Build project
+        run: pnpm build
