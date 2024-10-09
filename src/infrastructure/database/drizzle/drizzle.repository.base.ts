@@ -1,10 +1,10 @@
-import { schema as mainSchema, Schema } from '..';
+import { Schema } from '../types';
+import * as mainSchema from './schema';
 
-export abstract class DrizzleRepositoryBase<T = Schema> {
-  private innerSchema: Schema = mainSchema;
-  public schema: T;
+export abstract class DrizzleRepositoryBase {
+  private __schema: Schema = mainSchema;
 
-  constructor(cb: (schema: Schema) => T) {
-    this.schema = cb(this.innerSchema);
+  get schema() {
+    return this.__schema;
   }
 }

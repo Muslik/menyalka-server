@@ -3,11 +3,12 @@ services:
     build:
       context: .
       target: development
+    container_name: menyalka_server
     ports:
-      - '${PORT}:4000'
+      - '${PORT}:${PORT}'
     volumes:
       - .:/app
-      - ./node_modules:/app/node_modules
+      - /app/node_modules
     env_file:
       - .env.development
     depends_on:
@@ -25,7 +26,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
   pgadmin:
-    container_name: pgadmin_container
+    container_name: pgadmin
     image: dpage/pgadmin4
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
@@ -38,7 +39,18 @@ services:
     restart: unless-stopped
     depends_on:
       - postgres
-
+  redis:
+    image: redis:latest
+    container_name: redis
+    env_file:
+      - .env.development
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: ['redis-server', '/usr/local/etc/redis/redis.conf']
 volumes:
   pgdata:
   pgadmin:
+  redis:

@@ -3,5 +3,6 @@ export { TransactionalAdapterDrizzle } from './drizzle/transactional-adapter.dri
 export { DrizzleRepositoryBase } from './drizzle/drizzle.repository.base';
 export { DATABASE } from './database.constants';
 export * as schema from './drizzle/schema';
+export * as B from './drizzle/brands';
 
 export * from './types';

@@ -1,4 +1,4 @@
-import { ClsPluginTransactional } from '@nestjs-cls/transactional';
+import { RedisModule } from '@liaoliaots/nestjs-redis';
 import { Module, Provider, ValidationPipe } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -6,14 +6,22 @@ import { ClsModule } from 'nestjs-cls';
 import { LoggerModule, PinoLogger } from 'nestjs-pino';
 import { v4 as uuid } from 'uuid';
 
-import { ConfigModule, ConfigService } from '~/infrastructure/config';
+import { CONFIG_SERVICE, ConfigModule, ConfigService } from '~/infrastructure/config';
 import { DatabaseModule, DATABASE, TransactionalAdapterDrizzle } from '~/infrastructure/database';
 import { BadRequestException } from '~/infrastructure/exceptions';
 import { GlobalExceptionFilter } from '~/infrastructure/filters/exception.filter';
 import { ExceptionInterceptor } from '~/infrastructure/interceptors/exception.interceptor';
 import { LoggerInterceptor } from '~/infrastructure/interceptors/logger.interceptor';
 
-import { UserModule } from './modules/user';
+import { CACHE_STORAGE_NAME, CacheModule } from './infrastructure/cache';
+import { ACCESS_CONTROL_SERVICE, AccessControlModule, AccessControlService } from './modules/access-control';
+import { AuthModule } from './modules/auth';
+import { SESSION_SERVICE, SessionModule, SESSIONS_STORAGE_NAME } from './modules/session';
+import { SessionService } from './modules/session/session.service';
+import { TELEGRAM_AUTH_SERVICE, TelegramAuthService, TelegramModule } from './modules/telegram';
+import { UserModule, UserService } from './modules/user';
+import { USER_SERVICE } from './modules/user/user.constants';
+import { ClsPluginTransactional } from '~/infrastructure/lib/effect/plugin-transactional';
 
 const filters: Provider[] = [
   {
@@ -52,6 +60,8 @@ const interceptors: Provider[] = [
 
 @Module({
   imports: [
+    ConfigModule.forRoot(),
+    CacheModule,
     LoggerModule.forRootAsync({
       useFactory: (configService: ConfigService) => ({
         pinoHttp: {
@@ -73,7 +83,7 @@ const interceptors: Provider[] = [
           },
         },
       }),
-      inject: [ConfigService],
+      inject: [CONFIG_SERVICE],
       imports: [ConfigModule],
     }),
     ThrottlerModule.forRoot([
@@ -82,14 +92,33 @@ const interceptors: Provider[] = [
         limit: 10000,
       },
     ]),
-    ConfigModule.forRoot(),
     ClsModule.forRoot({
+      global: true,
+      middleware: { mount: true },
       plugins: [
         new ClsPluginTransactional({
           imports: [DatabaseModule],
           adapter: new TransactionalAdapterDrizzle(DATABASE, { accessMode: 'read write' }),
         }),
       ],
+    }),
+    RedisModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => {
+        return {
+          config: [
+            {
+              namespace: SESSIONS_STORAGE_NAME,
+              url: `${configService.redis.url}/${configService.redis.sessionDatabase}`,
+            },
+            {
+              namespace: CACHE_STORAGE_NAME,
+              url: `${configService.redis.url}/${configService.redis.cacheDatabase}`,
+            },
+          ],
+        };
+      },
+      inject: [CONFIG_SERVICE],
     }),
     DatabaseModule.registerAsync({
       tag: DATABASE,
@@ -102,17 +131,37 @@ const interceptors: Provider[] = [
               if (configService.isDevelopment) {
                 logger.setContext('Postgres');
                 logger.debug(query, 'Executing query');
-                logger.debug(parameters, 'Parameters');
+                /* logger.debug(parameters, 'Parameters'); */
               }
             },
           },
         },
       }),
-      inject: [ConfigService, PinoLogger],
+      inject: [CONFIG_SERVICE, PinoLogger],
     }),
-    UserModule,
+    AuthModule.forRootAsync({
+      imports: [UserModule, TelegramModule, SessionModule],
+      useFactory: (userService: UserService, telegramService: TelegramAuthService, sessionService: SessionService) => ({
+        getUserByProviderId: userService.getUserByProviderId,
+        createUserWithSocialCredentials: userService.createUserWithSocialCredentials,
+        getUserById: userService.getUserWithRolesById,
+        telegramValidateAuthData: telegramService.validateAuthData,
+        createSession: sessionService.createSession,
+      }),
+      inject: [USER_SERVICE, TELEGRAM_AUTH_SERVICE, SESSION_SERVICE],
+    }),
+    UserModule.forRootAsync({
+      imports: [AccessControlModule],
+      useFactory: (accessControlService: AccessControlService) => ({
+        getRoleById: accessControlService.getRoleById,
+      }),
+      inject: [ACCESS_CONTROL_SERVICE],
+    }),
+    SessionModule,
+    AccessControlModule,
+    TelegramModule,
   ],
   controllers: [],
   providers: [...filters, ...guards, ...pipes, ...interceptors],
 })
-export class AppModule {}
+export class AppModule { }

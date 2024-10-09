@@ -18,17 +18,5 @@ module.exports = {
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
-    'no-restricted-imports': [
-      'error',
-      {
-        patterns: [
-          {
-            group: ['@nestjs/common/exceptions'],
-            message:
-              'Please do not import exceptions directly from @nestjs/common/exceptions; use the custom exceptions provided by our application.',
-          },
-        ],
-      },
-    ],
   },
 };

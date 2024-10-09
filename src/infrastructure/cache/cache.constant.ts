@@ -1,0 +1,2 @@
+export const CACHE_STORAGE_NAME = 'cache';
+export const CACHE_STORAGE_SERVICE = 'CACHE_STORAGE_SERVICE';

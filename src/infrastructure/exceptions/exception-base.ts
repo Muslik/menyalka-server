@@ -1,16 +1,20 @@
-export abstract class ExceptionBase<T extends string = string> extends Error {
+export abstract class ExceptionBase<T extends string = string> {
+  readonly _tag: string = 'ExceptionBase';
   abstract type: string;
   abstract statusCode: number;
+  public stack: string | undefined;
 
   constructor(
     public readonly code: T,
     public readonly message: string,
     public readonly inner?: unknown,
   ) {
-    super(message);
+    this._tag = code;
 
     if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, this.constructor);
+      Error.captureStackTrace(this, ExceptionBase);
+    } else {
+      this.stack = new Error().stack;
     }
   }
 
@@ -36,12 +40,6 @@ export abstract class ExceptionBase<T extends string = string> extends Error {
         // For any other types, convert to string
         lines.push(String(this.inner));
       }
-    }
-
-    // Include the stack trace of the current exception
-    if (this.stack) {
-      lines.push('Stack Trace:');
-      lines.push(this.stack);
     }
 
     // Join all the lines into a single string output
