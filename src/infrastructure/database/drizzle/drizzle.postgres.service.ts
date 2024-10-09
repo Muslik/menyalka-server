@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DrizzleConfig } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import * as postgres from 'postgres';
+import postgres from 'postgres';
 import type { Options, PostgresType } from 'postgres';
 
 import * as schema from './schema';
@@ -24,7 +24,7 @@ export class DrizzlePostgresService {
     try {
       await client`SELECT NOW() as current_time`;
     } catch (error) {
-      this.logger.error('Unable to connect to the database');
+      this.logger.error('Unable to connect to the database', error);
       throw error;
     }
 

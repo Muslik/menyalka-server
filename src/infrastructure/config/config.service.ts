@@ -1,43 +1,38 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
-export const NODE_ENV = process.env.NODE_ENV ?? 'development';
+import { Config, IConfigService } from './config.service.interface';
 
-export type Config = {
-  port: number;
-  host: string;
-  isProduction: boolean;
-  isDevelopment: boolean;
-  isTest: boolean;
-  database: {
-    url: string;
-  };
-  redis: {
-    host: string;
-    port: number;
-  };
-};
+export const NODE_ENV = process.env.NODE_ENV ?? 'development';
 
 export const config = (): Config => {
   return {
     host: process.env.HOST || '0.0.0.0',
-    port: parseInt(process.env.PORT || '', 10) || 3000,
+    port: parseInt(process.env.PORT || '', 10) || 4000,
     isProduction: NODE_ENV === 'production',
     isDevelopment: NODE_ENV === 'development',
     isTest: NODE_ENV === 'test',
+    telegram: {
+      botToken: process.env.TELEGRAM_BOT_TOKEN || '',
+    },
     database: {
       url: process.env.DATABASE_URL || '',
     },
     redis: {
-      host: process.env.REDIS_HOST || '',
-      port: parseInt(process.env.REDIS_PORT || '', 10),
+      url: process.env.REDIS_URL || '',
+      sessionDatabase: '1',
+      cacheDatabase: '2',
     },
   };
 };
 
 @Injectable()
-export class ConfigService {
-  constructor(public nestConfigService: NestConfigService<Config, true>) {}
+export class ConfigService implements IConfigService {
+  constructor(public nestConfigService: NestConfigService<Config, true>) { }
+
+  get host(): Config['host'] {
+    return this.nestConfigService.get('host');
+  }
 
   get port(): Config['port'] {
     return this.nestConfigService.get('port');
@@ -61,5 +56,9 @@ export class ConfigService {
 
   get redis(): Config['redis'] {
     return this.nestConfigService.get('redis');
+  }
+
+  get telegram(): Config['telegram'] {
+    return this.nestConfigService.get('telegram');
   }
 }

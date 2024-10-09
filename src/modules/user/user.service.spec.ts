@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ClsModule } from 'nestjs-cls';
 
-import { ConfigModule } from '~/infrastructure/config';
 import { User } from '~/infrastructure/database';
 
 import { USER_REPOSITORY } from './user.constants';
@@ -21,7 +20,7 @@ describe('User Service', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [ConfigModule, ClsModule],
+      imports: [ClsModule],
       providers: [
         {
           provide: USER_REPOSITORY,

@@ -1,0 +1,39 @@
+.husky
+node_modules
+dist
+
+# Ignore version control system directories
+.git
+.github
+.gitignore
+.gitattributes
+.hg
+.svn
+
+# Ignore OS or editor-specific files
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+
+# Ignore logs
+*.log
+*.log.*
+
+# Ignore env
+.env
+.env.*
+
+# Ignore test and documentation files
+coverage
+*.test.ts
+*.spec.ts
+test
+tests
+docs
+
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.dev.yml
+

@@ -1,35 +1,35 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 import { ExceptionBase } from './exception-base';
-import { EXCEPTION_CODES } from './exception-codes';
+import { BASE_EXCEPTION_CODES } from './exception-codes';
 
 export class UnauthorizedException<T extends string = string> extends ExceptionBase<T> {
-  public readonly type = EXCEPTION_CODES.UNAUTHORIZED;
+  public readonly type = BASE_EXCEPTION_CODES.UNAUTHORIZED;
   public readonly statusCode = 401;
 }
 
 export class NotAllowedException<T extends string = string> extends ExceptionBase<T> {
-  public readonly type = EXCEPTION_CODES.FORBIDDEN;
+  public readonly type = BASE_EXCEPTION_CODES.FORBIDDEN;
   public readonly statusCode = 403;
 }
 
 export class BadRequestException<T extends string = string> extends ExceptionBase<T> {
-  public readonly type = EXCEPTION_CODES.BAD_REQUEST;
+  public readonly type = BASE_EXCEPTION_CODES.BAD_REQUEST;
   public readonly statusCode = 400;
 }
 
 export class NotFoundException<T extends string = string> extends ExceptionBase<T> {
-  public readonly type = EXCEPTION_CODES.NOT_FOUND;
+  public readonly type = BASE_EXCEPTION_CODES.NOT_FOUND;
   public readonly statusCode = 404;
 }
 
 export class InternalServerErrorException<T extends string = string> extends ExceptionBase<T> {
-  public readonly type = EXCEPTION_CODES.INTERNAL_SERVER_ERROR;
+  public readonly type = BASE_EXCEPTION_CODES.INTERNAL_SERVER_ERROR;
   public readonly statusCode = 500;
 }
 
 export class RateLimitException<T extends string = string> extends ExceptionBase<T> {
-  public readonly type = EXCEPTION_CODES.TOO_MANY_REQUESTS;
+  public readonly type = BASE_EXCEPTION_CODES.TOO_MANY_REQUESTS;
   public readonly statusCode = 429;
 }
 

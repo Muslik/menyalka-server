@@ -1,13 +1,13 @@
 import { ArgumentsHost, Catch, ExceptionFilter } from '@nestjs/common';
 import { EMPTY, throwError } from 'rxjs';
-import { ExceptionBase, EXCEPTION_CODES } from 'src/infrastructure/exceptions';
+import { ExceptionBase, BASE_EXCEPTION_CODES } from 'src/infrastructure/exceptions';
 
 const typesMap = new Map<string, number>()
-  .set(EXCEPTION_CODES.UNAUTHORIZED, 401)
-  .set(EXCEPTION_CODES.FORBIDDEN, 403)
-  .set(EXCEPTION_CODES.NOT_FOUND, 404)
-  .set(EXCEPTION_CODES.BAD_REQUEST, 400)
-  .set(EXCEPTION_CODES.INTERNAL_SERVER_ERROR, 500);
+  .set(BASE_EXCEPTION_CODES.UNAUTHORIZED, 401)
+  .set(BASE_EXCEPTION_CODES.FORBIDDEN, 403)
+  .set(BASE_EXCEPTION_CODES.NOT_FOUND, 404)
+  .set(BASE_EXCEPTION_CODES.BAD_REQUEST, 400)
+  .set(BASE_EXCEPTION_CODES.INTERNAL_SERVER_ERROR, 500);
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {

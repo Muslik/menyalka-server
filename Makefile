@@ -10,4 +10,7 @@ down:
 	docker-compose $(OPTIONS) down
 
 bash:
-	docker exec -it app sh
+	docker exec -it menyalka_server zsh
+
+attach:
+	docker attach menyalka_server
