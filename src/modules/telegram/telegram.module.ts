@@ -1,17 +1,19 @@
 import { Module } from '@nestjs/common';
 
-import { TelegramAuthService } from './services/auth/telegram-auth.service';
-import { TELEGRAM_AUTH_SERVICE } from './telegram.constants';
-import { ConfigModule } from '~/infrastructure/config';
+import { ConfigModule } from '~/configs';
+
+import { TELEGRAM_SERVICE } from './telegram.di-tokens';
+import { TelegramService } from './telegram.service';
 
 @Module({
   imports: [ConfigModule],
   providers: [
     {
-      provide: TELEGRAM_AUTH_SERVICE,
-      useClass: TelegramAuthService,
+      provide: TELEGRAM_SERVICE,
+      useClass: TelegramService,
     },
   ],
-  exports: [TELEGRAM_AUTH_SERVICE],
+  exports: [TELEGRAM_SERVICE],
 })
 export class TelegramModule { }
+

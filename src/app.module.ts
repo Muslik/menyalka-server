@@ -14,13 +14,13 @@ import { ExceptionInterceptor } from '~/infrastructure/interceptors/exception.in
 import { LoggerInterceptor } from '~/infrastructure/interceptors/logger.interceptor';
 
 import { CACHE_STORAGE_NAME, CacheModule } from './infrastructure/cache';
-import { ACCESS_CONTROL_SERVICE, AccessControlModule, AccessControlService } from './modules/access-control';
-import { AuthModule } from './modules/auth';
-import { SESSION_SERVICE, SessionModule, SESSIONS_STORAGE_NAME } from './modules/session';
-import { SessionService } from './modules/session/session.service';
-import { TELEGRAM_AUTH_SERVICE, TelegramAuthService, TelegramModule } from './modules/telegram';
-import { UserModule, UserService } from './modules/user';
-import { USER_SERVICE } from './modules/user/user.constants';
+import { ACCESS_CONTROL_SERVICE, AccessControlModule, AccessControlService } from './_modules/access-control';
+import { AuthModule } from './_modules/auth';
+import { SESSION_SERVICE, SessionModule, SESSIONS_STORAGE_NAME } from './_modules/session';
+import { SessionService } from './_modules/session/session.service';
+import { TELEGRAM_AUTH_SERVICE, TelegramAuthService, TelegramModule } from './_modules/telegram';
+import { UserModule, UserService } from './_modules/user';
+import { USER_SERVICE } from './_modules/user/user.constants';
 import { ClsPluginTransactional } from '~/infrastructure/lib/effect/plugin-transactional';
 
 const filters: Provider[] = [
