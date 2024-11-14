@@ -5,8 +5,10 @@ if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is not defined');
 }
 
+console.log(process.env.DATABASE_URL);
+
 export default defineConfig({
-  schema: './src/infrastructure/database/drizzle/schema.ts',
+  schema: './src/libs/database/drizzle/schema.ts',
   out: 'database/migrations',
   dialect: 'postgresql',
   dbCredentials: {

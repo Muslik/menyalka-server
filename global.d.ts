@@ -27,3 +27,8 @@ interface Array<T> {
 interface ReadonlyArray<T> {
   filter(predicate: BooleanConstructor, thisArg?: any): NonFalsy<T>[];
 }
+
+type BuildConstraints<T extends string, C extends string[]> = Record<`${T}.${C[number]}`, string>;
+
+type Keys<T extends Record<string, unknown>> = keyof T;
+type Values<T extends Record<string, unknown>> = T[keyof T];

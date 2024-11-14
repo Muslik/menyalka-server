@@ -1,0 +1,1 @@
+export const TELEGRAM_AUTH_SERVICE = Symbol('TELEGRAM_AUTH_SERVICE');
