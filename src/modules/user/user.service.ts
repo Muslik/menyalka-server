@@ -1,8 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Effect, Option, pipe } from 'effect';
 
-import { RBAC } from '~/infrastructure/config';
-import { B, User, UserWithRoles } from '~/infrastructure/database';
+import { RBAC } from '~/config';
+import {
+  ProviderId,
+  RoleId,
+  TRANSACTION_REPOSITORY,
+  TransactionRepository,
+  User,
+  UserId,
+  Username,
+  UserWithRoles,
+} from '~/libs/database';
 
 import { UserWithSocialCredentialsDto } from './dto/userWithSocialCredentials.dto';
 import { IUserRepository } from './repositories/user.repository.interface';
@@ -10,7 +19,6 @@ import { IUserSocialCredentialsRepository } from './repositories/userSocialCrede
 import { USER_REPOSITORY, USER_SOCIAL_CREDENTIALS_REPOSITORY } from './user.constants';
 import { UserIdInvalidError } from './user.errors';
 import { IUserService } from './user.service.interface';
-import { Transactional } from '~/infrastructure/lib/effect/plugin-transactional';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -18,9 +26,10 @@ export class UserService implements IUserService {
     @Inject(USER_REPOSITORY) private readonly userRepository: IUserRepository,
     @Inject(USER_SOCIAL_CREDENTIALS_REPOSITORY)
     private readonly userSocialCredentialsRepository: IUserSocialCredentialsRepository,
+    @Inject(TRANSACTION_REPOSITORY) private readonly transactionRepository: TransactionRepository,
   ) {}
 
-  assignRoleToUser(userId: B.UserId, roleId: B.RoleId): Effect.Effect<void, UserIdInvalidError | Error> {
+  assignRoleToUser(userId: UserId, roleId: RoleId): Effect.Effect<void, UserIdInvalidError> {
     return pipe(
       this.userRepository.findOne(userId),
       Effect.andThen((option) =>
@@ -39,42 +48,38 @@ export class UserService implements IUserService {
     );
   }
 
-  getUsers(): Effect.Effect<User[], Error> {
+  getUsers(): Effect.Effect<User[]> {
     return this.userRepository.findAll();
   }
 
-  getUserByProviderId(providerUserId: B.ProviderUserId): Effect.Effect<Option.Option<UserWithRoles>, Error> {
+  getUserWithRolesByProviderId(providerUserId: ProviderId): Effect.Effect<Option.Option<UserWithRoles>> {
     return this.userRepository.findUserByProviderIdWithRoles(providerUserId);
   }
 
-  getUserWithRolesById(userId: B.UserId): Effect.Effect<Option.Option<UserWithRoles>, Error> {
+  getUserWithRolesById(userId: UserId): Effect.Effect<Option.Option<UserWithRoles>> {
     return this.userRepository.findUserWithRoles(userId);
   }
 
-  getUserByUsername(username: B.Username): Effect.Effect<Option.Option<User>, Error> {
+  getUserByUsername(username: Username): Effect.Effect<Option.Option<User>> {
     return this.userRepository.findUserByUsername(username);
   }
 
-  getUserByEmail(email: B.Email): Effect.Effect<Option.Option<User>, Error> {
-    return this.userRepository.findUserByEmail(email);
-  }
-
-  @Transactional()
-  createUserWithSocialCredentials(user: UserWithSocialCredentialsDto): Effect.Effect<UserWithRoles, Error> {
-    return pipe(
-      this.userRepository.save({
-        username: user.username,
-        roleId: B.RoleId(RBAC.ROLES_MAP[RBAC.Role.User].id),
-      }),
-      Effect.tap((newUser) =>
-        this.userSocialCredentialsRepository.insert({
-          userId: newUser.id,
-          providerUserId: user.providerUserId,
-          providerType: user.providerType,
+  createUserWithSocialCredentials(user: UserWithSocialCredentialsDto): Effect.Effect<User> {
+    return this.transactionRepository.withTransaction(() =>
+      pipe(
+        this.userRepository.save({
+          username: user.username,
+          roleId: RoleId(RBAC.RoleId.User),
+        }),
+        Effect.tap((newUser) => {
+          console.log('Tap');
+          return this.userSocialCredentialsRepository.insert({
+            userId: newUser.id,
+            providerId: user.providerId,
+            providerType: user.providerType,
+          });
         }),
       ),
-      Effect.andThen((newUser) => this.userRepository.findUserWithRoles(newUser.id)),
-      Effect.andThen(Option.map((user) => user)),
     );
   }
 }

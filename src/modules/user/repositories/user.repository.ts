@@ -1,76 +1,47 @@
 import { Injectable } from '@nestjs/common';
 import { Effect, Option, pipe } from 'effect';
 
-import {
-  DrizzleRepositoryBase,
-  TransactionalAdapterDrizzle,
-  User,
-  UserInsert,
-  UserWithRoles,
-  B,
-} from '~/infrastructure/database';
-import { DatabaseError, runDbQuery } from '~/infrastructure/lib/effect';
-import { Transactional, TransactionHost } from '~/infrastructure/lib/effect/plugin-transactional';
+import { DrizzleRepositoryBase, ProviderId, User, UserId, UserInsert, Username, UserWithRoles } from '~/libs/database';
+import { TransactionHost } from '~/libs/database/transaction';
 
 import { IUserRepository } from './user.repository.interface';
-import { RoleId } from '~/infrastructure/database/drizzle/brands';
 
 @Injectable()
 export class UserRepository extends DrizzleRepositoryBase implements IUserRepository {
-  constructor(private readonly txHost: TransactionHost<TransactionalAdapterDrizzle>) {
+  constructor(private readonly txHost: TransactionHost) {
     super();
   }
 
-  findOne(userId: B.UserId): Effect.Effect<Option.Option<User>, Error> {
+  findOne(userId: UserId): Effect.Effect<Option.Option<User>> {
     return pipe(
-      Effect.tryPromise(() => this.txHost.tx.query.users.findFirst({ where: (users, { eq }) => eq(users.id, userId) })),
+      Effect.promise(() => this.txHost.tx.query.users.findFirst({ where: (users, { eq }) => eq(users.id, userId) })),
       Effect.map(Option.fromNullable),
     );
   }
 
-  save(entity: UserInsert): Effect.Effect<User, Error> {
+  save(entity: UserInsert): Effect.Effect<User> {
     return pipe(
-      Effect.tryPromise(() => this.txHost.tx.insert(this.schema.users).values(entity).returning()),
+      Effect.promise(() => this.txHost.tx.insert(this.schema.users).values(entity).returning()),
       Effect.map((users) => users[0]),
     );
   }
 
-  findUserByEmail(email: B.Email): Effect.Effect<Option.Option<User>, Error> {
+  findUserByUsername(username: Username): Effect.Effect<Option.Option<User>> {
     return pipe(
-      Effect.tryPromise(() =>
-        this.txHost.tx.query.users.findFirst({ where: (users, { eq }) => eq(users.email, email) }),
-      ),
-      Effect.map(Option.fromNullable),
-    );
-  }
-
-  findUserByUsername(username: B.Username): Effect.Effect<Option.Option<User>, Error> {
-    return pipe(
-      Effect.tryPromise(() =>
+      Effect.promise(() =>
         this.txHost.tx.query.users.findFirst({ where: (users, { eq }) => eq(users.username, username) }),
       ),
       Effect.map(Option.fromNullable),
     );
   }
 
-  @Transactional()
-  findAll(): Effect.Effect<User[], DatabaseError> {
-    return runDbQuery(async () => {
-      await this.txHost.tx.insert(this.schema.users).values({
-        username: B.Username('FUCKER PLAYER'),
-        roleId: RoleId(1),
-      });
-      await this.txHost.tx.insert(this.schema.users).values({
-        username: 123,
-        roleId: RoleId(1),
-      });
-      return this.txHost.tx.query.users.findMany();
-    });
+  findAll(): Effect.Effect<User[]> {
+    return Effect.promise(() => this.txHost.tx.query.users.findMany());
   }
 
-  findUserWithRoles(userId: B.UserId): Effect.Effect<Option.Option<UserWithRoles>, Error> {
+  findUserWithRoles(userId: UserId): Effect.Effect<Option.Option<UserWithRoles>> {
     return pipe(
-      Effect.tryPromise(() =>
+      Effect.promise(() =>
         this.txHost.tx.query.users.findFirst({
           where: (users, { eq }) => eq(users.id, userId),
           with: {
@@ -88,13 +59,13 @@ export class UserRepository extends DrizzleRepositoryBase implements IUserReposi
     );
   }
 
-  findUserByProviderIdWithRoles(providerUserId: B.ProviderUserId): Effect.Effect<Option.Option<UserWithRoles>, Error> {
+  findUserByProviderIdWithRoles(providerUserId: ProviderId): Effect.Effect<Option.Option<UserWithRoles>> {
     return pipe(
-      Effect.tryPromise(() =>
+      Effect.promise(() =>
         this.txHost.tx.query.users.findFirst({
           with: {
             userSocialCredentials: {
-              where: (socialCredentials, { eq }) => eq(socialCredentials.providerUserId, providerUserId),
+              where: (socialCredentials, { eq }) => eq(socialCredentials.providerId, providerUserId),
             },
             role: {
               with: { rolesToPermissions: { with: { permission: true } } },

@@ -1,25 +1,31 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsEmail, IsBoolean } from 'class-validator';
+import { SchemaObjectMetadata } from '@nestjs/swagger/dist/interfaces/schema-object-metadata.interface';
+import { IsString, MaxLength, Matches, MinLength, MAX_LENGTH, MIN_LENGTH, MATCHES } from 'class-validator';
 
-import { IsEmailFree, IsUsernameFree } from '~/modules/user';
+import { ValidationException } from '~/libs/exceptions';
+
+const MAX_USERNAME_LENGTH = 50;
+const MIN_USERNAME_LENGTH = 3;
+
+type Constraints = BuildConstraints<'username', [typeof MAX_LENGTH, typeof MIN_LENGTH, typeof MATCHES]>;
+
+export class SignUpDtoValidationResponse extends ValidationException {
+  @ApiProperty({
+    type: 'object',
+    properties: {
+      [`username.${MAX_LENGTH}`]: { type: 'string' },
+      [`username.${MIN_LENGTH}`]: { type: 'string' },
+      [`username.${MATCHES}`]: { type: 'string' },
+    } satisfies Record<keyof Constraints, SchemaObjectMetadata>,
+  })
+  readonly constraints: Constraints;
+}
 
 export class SignUpDto {
-  @ApiProperty({ example: '@Dzhabb' })
+  @ApiProperty({ example: '@Dzhabb', type: String, minLength: MIN_USERNAME_LENGTH, maxLength: MAX_USERNAME_LENGTH })
   @IsString()
-  @IsNotEmpty()
-  @IsUsernameFree()
+  @MinLength(MIN_USERNAME_LENGTH)
+  @MaxLength(MAX_USERNAME_LENGTH)
+  @Matches(/^[a-zA-Z0-9_-]+$/)
   username: string;
-
-  @ApiProperty({ example: 'Dzhabb@mail.ru' })
-  @IsEmail()
-  @IsEmailFree()
-  email: string;
-
-  @ApiProperty({ example: true })
-  @IsBoolean()
-  sex: boolean;
-
-  @ApiProperty({ example: 'I am a cool guy' })
-  @IsString()
-  description: string;
 }

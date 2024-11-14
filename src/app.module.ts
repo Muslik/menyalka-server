@@ -1,27 +1,29 @@
 import { RedisModule } from '@liaoliaots/nestjs-redis';
 import { Module, Provider, ValidationPipe } from '@nestjs/common';
-import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { ConfigModule } from '@nestjs/config';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { ClsModule } from 'nestjs-cls';
+import { randomUUID } from 'crypto';
+import { ClsModule, ClsService } from 'nestjs-cls';
 import { LoggerModule, PinoLogger } from 'nestjs-pino';
-import { v4 as uuid } from 'uuid';
 
-import { CONFIG_SERVICE, ConfigModule, ConfigService } from '~/infrastructure/config';
-import { DatabaseModule, DATABASE, TransactionalAdapterDrizzle } from '~/infrastructure/database';
-import { BadRequestException } from '~/infrastructure/exceptions';
-import { GlobalExceptionFilter } from '~/infrastructure/filters/exception.filter';
-import { ExceptionInterceptor } from '~/infrastructure/interceptors/exception.interceptor';
-import { LoggerInterceptor } from '~/infrastructure/interceptors/logger.interceptor';
+import { AppConfigModule, AppConfigService, config, CONFIG_SERVICE, configSchema, NODE_ENV } from '~/config';
 
-import { CACHE_STORAGE_NAME, CacheModule } from './infrastructure/cache';
+import { GlobalExceptionFilter } from './libs/app/filters/exception.filter';
+import { AuthGuard } from './libs/app/guards/auth.guard';
+import { EffectInterceptor } from './libs/app/interceptors/effect.interceptor';
+import { ExceptionInterceptor } from './libs/app/interceptors/exception.interceptor';
+import { LoggerInterceptor } from './libs/app/interceptors/logger.interceptor';
+import { CACHE_STORAGE_NAME, CacheModule } from './libs/cache';
+import { DatabaseModule, DATABASE } from './libs/database';
+import { TransactionModule } from './libs/database/transaction';
+import { ValidationException } from './libs/exceptions';
 import { ACCESS_CONTROL_SERVICE, AccessControlModule, AccessControlService } from './modules/access-control';
 import { AuthModule } from './modules/auth';
-import { SESSION_SERVICE, SessionModule, SESSIONS_STORAGE_NAME } from './modules/session';
-import { SessionService } from './modules/session/session.service';
+import { RulesModule } from './modules/rules';
+import { SessionService, SESSION_SERVICE, SessionModule, SESSIONS_STORAGE_NAME } from './modules/session';
 import { TELEGRAM_AUTH_SERVICE, TelegramAuthService, TelegramModule } from './modules/telegram';
-import { UserModule, UserService } from './modules/user';
-import { USER_SERVICE } from './modules/user/user.constants';
-import { ClsPluginTransactional } from '~/infrastructure/lib/effect/plugin-transactional';
+import { UserModule, UserService, USER_SERVICE } from './modules/user';
 
 const filters: Provider[] = [
   {
@@ -30,20 +32,34 @@ const filters: Provider[] = [
   },
 ];
 
-const guards: Provider[] = [];
+const guards: Provider[] = [
+  {
+    provide: APP_GUARD,
+    useClass: AuthGuard,
+  },
+];
+
 const pipes = [
   {
     provide: APP_PIPE,
     useFactory: () =>
       new ValidationPipe({
-        exceptionFactory: (errors) =>
-          new BadRequestException(
-            'VALIDATION_ERROR',
-            'Ошибка валидации данных',
-            Object.fromEntries(
-              errors.map((error): [string, Record<string, string>] => [error.property, error.constraints || {}]),
-            ),
-          ),
+        exceptionFactory: (errors) => {
+          const mappedErrors = errors.reduce(
+            (acc, { property, constraints }) => {
+              if (constraints) {
+                Object.keys(constraints).forEach((key) => {
+                  acc[`${property}.${key}`] = constraints[key];
+                });
+              }
+
+              return acc;
+            },
+            {} as Record<string, string>,
+          );
+
+          return new ValidationException(mappedErrors);
+        },
       }),
   },
 ];
@@ -56,21 +72,36 @@ const interceptors: Provider[] = [
     provide: APP_INTERCEPTOR,
     useClass: ExceptionInterceptor,
   },
+  {
+    provide: APP_INTERCEPTOR,
+    useClass: EffectInterceptor,
+  },
 ];
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
-    CacheModule,
+    ConfigModule.forRoot({
+      envFilePath: NODE_ENV === 'production' ? '.env' : `.env.${NODE_ENV}`,
+      isGlobal: true,
+      load: [config],
+      validationSchema: configSchema,
+    }),
+    AppConfigModule,
+    ClsModule.forRoot({
+      global: true,
+      middleware: {
+        mount: true,
+        generateId: true,
+        idGenerator: (req) => req.headers['X-Request-Id'] ?? randomUUID(),
+      },
+    }),
     LoggerModule.forRootAsync({
-      useFactory: (configService: ConfigService) => ({
+      useFactory: (configService: AppConfigService, cls: ClsService) => ({
         pinoHttp: {
           level: configService.isProduction ? 'info' : 'debug',
           autoLogging: false,
           quietReqLogger: true,
-          genReqId: (req) => {
-            return (req.headers['X-Request-Id'] as string) || uuid();
-          },
+          genReqId: () => cls.getId(),
           customProps: () => ({
             context: 'HTTP',
           }),
@@ -84,27 +115,18 @@ const interceptors: Provider[] = [
         },
       }),
       inject: [CONFIG_SERVICE],
-      imports: [ConfigModule],
+      imports: [AppConfigModule, ClsModule],
     }),
+    CacheModule,
     ThrottlerModule.forRoot([
       {
         ttl: 60000,
         limit: 10000,
       },
     ]),
-    ClsModule.forRoot({
-      global: true,
-      middleware: { mount: true },
-      plugins: [
-        new ClsPluginTransactional({
-          imports: [DatabaseModule],
-          adapter: new TransactionalAdapterDrizzle(DATABASE, { accessMode: 'read write' }),
-        }),
-      ],
-    }),
     RedisModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => {
+      imports: [AppConfigModule],
+      useFactory: (configService: AppConfigService) => {
         return {
           config: [
             {
@@ -122,8 +144,8 @@ const interceptors: Provider[] = [
     }),
     DatabaseModule.registerAsync({
       tag: DATABASE,
-      imports: [ConfigModule, LoggerModule],
-      useFactory: async (configService: ConfigService, logger: PinoLogger) => ({
+      imports: [AppConfigModule, LoggerModule],
+      useFactory: async (configService: AppConfigService, logger: PinoLogger) => ({
         postgres: {
           url: configService.database.url,
           config: {
@@ -131,7 +153,7 @@ const interceptors: Provider[] = [
               if (configService.isDevelopment) {
                 logger.setContext('Postgres');
                 logger.debug(query, 'Executing query');
-                /* logger.debug(parameters, 'Parameters'); */
+                logger.debug(parameters, 'Parameters');
               }
             },
           },
@@ -139,14 +161,19 @@ const interceptors: Provider[] = [
       }),
       inject: [CONFIG_SERVICE, PinoLogger],
     }),
+    TransactionModule.register({
+      accessMode: 'read write',
+    }),
     AuthModule.forRootAsync({
-      imports: [UserModule, TelegramModule, SessionModule],
+      imports: [UserModule, TelegramModule, SessionModule, AppConfigModule],
       useFactory: (userService: UserService, telegramService: TelegramAuthService, sessionService: SessionService) => ({
-        getUserByProviderId: userService.getUserByProviderId,
-        createUserWithSocialCredentials: userService.createUserWithSocialCredentials,
-        getUserById: userService.getUserWithRolesById,
-        telegramValidateAuthData: telegramService.validateAuthData,
-        createSession: sessionService.createSession,
+        getUserByUsername: userService.getUserByUsername.bind(userService),
+        getUserByProviderId: userService.getUserWithRolesByProviderId.bind(userService),
+        createUserWithSocialCredentials: userService.createUserWithSocialCredentials.bind(userService),
+        getUserById: userService.getUserWithRolesById.bind(userService),
+        telegramValidateAuthData: telegramService.validateAuthData.bind(telegramService),
+        createSession: sessionService.createSession.bind(sessionService),
+        deleteSession: sessionService.deleteSession.bind(sessionService),
       }),
       inject: [USER_SERVICE, TELEGRAM_AUTH_SERVICE, SESSION_SERVICE],
     }),
@@ -160,8 +187,9 @@ const interceptors: Provider[] = [
     SessionModule,
     AccessControlModule,
     TelegramModule,
+    RulesModule,
   ],
   controllers: [],
-  providers: [...filters, ...guards, ...pipes, ...interceptors],
+  providers: [...filters, ...pipes, ...guards, ...interceptors],
 })
-export class AppModule { }
+export class AppModule {}

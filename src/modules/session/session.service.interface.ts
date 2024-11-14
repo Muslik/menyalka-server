@@ -1,12 +1,10 @@
-import { Brand, Effect, Option } from 'effect';
-import { Session } from './session.entity';
-import { SessionCreateDto } from './dto/session-create.dto';
+import { Effect, Option } from 'effect';
 
-export type SessionId = string & Brand.Brand<'SessionId'>;
-export const SessionId = Brand.nominal<SessionId>();
+import { SessionCreateDto } from './dto/session-create.dto';
+import { Session, SessionId } from './session.entity';
 
 export interface ISessionService {
-  createSession(session: SessionCreateDto): Effect.Effect<Session, Error>;
-  getSession(sessionId: SessionId): Effect.Effect<Option.Option<Session>, Error>;
-  deleteSession(sessionId: SessionId): Effect.Effect<void, Error>;
+  createSession(session: SessionCreateDto): Effect.Effect<Session>;
+  getSession(sessionId: SessionId): Effect.Effect<Option.Option<Session>>;
+  deleteSession(sessionId: SessionId): Effect.Effect<void>;
 }

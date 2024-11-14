@@ -1,83 +1,107 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Option, Effect, pipe } from 'effect';
 
-import { RBAC } from '~/infrastructure/config';
-import { UserWithRoles } from '~/infrastructure/database';
-import { ProviderUserId } from '~/infrastructure/database/drizzle/brands';
+import { RBAC } from '~/config';
+import { ProviderId, User, Username, UserWithRoles } from '~/libs/database';
+import { fromSexPersistance } from '~/modules/user';
 
-import { AUTH_SERVICE_OPTIONS } from '../../auth.constants';
-import {
-  EmailAlreadyExistsError,
-  UnauthorizedError,
-  UnknownProviderError,
-  UsernameAlreadyExistsError,
-} from '../../auth.errors';
+import { AUTH_SERVICE_OPTIONS, OAUTH_FACTORY_SERIVCE } from '../../auth.constants';
+import { InvalidCredentialsError, UnauthorizedError, UnknownProviderError } from '../../auth.errors';
 import { SignUpDto } from '../../dto/signUp.dto';
 import { UserAuthDto } from '../../dto/userAuth.dto';
 import { IAuthServiceOptions } from '../../interfaces/authServiceOptions.interface';
-import { OAuthFactoryService } from '../oauth/oauth-factory.service';
-import { AuthData, AuthProvider, AuthString, IAuthService } from './auth.service.interface';
+import { IOAuthFactoryService } from '../oauth/oauth-factory.service.interface';
+import { AuthToken, AuthProvider, AuthString, IAuthService } from './auth.service.interface';
 
 @Injectable()
 export class AuthService implements IAuthService {
   constructor(
     @Inject(AUTH_SERVICE_OPTIONS) private authServiceOptions: IAuthServiceOptions,
-    private readonly oauthFactoryService: OAuthFactoryService,
-  ) { }
+    @Inject(OAUTH_FACTORY_SERIVCE) private readonly oauthFactoryService: IOAuthFactoryService,
+  ) {}
 
-  private toUserAuthDto(user: UserWithRoles): UserAuthDto {
+  private toUserAuthDto(user: User | UserWithRoles): UserAuthDto {
     const userAuthDto = new UserAuthDto();
     userAuthDto.id = user.id;
     userAuthDto.username = user.username;
-    userAuthDto.permissions = user.role.rolesToPermissions.map(({ permission }) => permission.name as RBAC.Permission);
-    userAuthDto.sex = user.sex;
+    if ('role' in user) {
+      userAuthDto.permissions = user.role.rolesToPermissions.map(
+        ({ permission }) => permission.name as RBAC.Permission,
+      );
+    }
+    userAuthDto.sex = fromSexPersistance(user.sex);
     userAuthDto.description = user.description;
-    userAuthDto.email = user.email;
 
     return userAuthDto;
   }
 
-  private parseAuthString(authString: AuthString): [AuthProvider, AuthData] {
-    const [authType, authData = ''] = authString.split(' ');
+  private parseAuthString(authString: AuthString): [AuthProvider, AuthToken] {
+    const [authProvider, authToken = ''] = authString.split(' ');
 
-    return [AuthProvider(authType), AuthData(authData)];
+    return [AuthProvider(authProvider), AuthToken(authToken)];
   }
 
   private getProviderUserInfo(
     authString: AuthString,
-  ): Effect.Effect<ProviderUserId, UnknownProviderError | UnauthorizedError | Error> {
-    const [authType, authData] = this.parseAuthString(authString);
-
+  ): Effect.Effect<ProviderId, UnknownProviderError | InvalidCredentialsError> {
     return pipe(
-      this.oauthFactoryService.getProvider(authType),
-      Effect.andThen((provider) => provider.getUserInfo(authData)),
+      Effect.Do,
+      Effect.let('parsedAuth', () => this.parseAuthString(authString)),
+      Effect.bind('providerService', ({ parsedAuth: [authProvider] }) => {
+        return this.oauthFactoryService.getProviderService(authProvider);
+      }),
+      Effect.andThen(({ providerService, parsedAuth: [_, authToken] }) => {
+        return providerService.getUserInfo(authToken);
+      }),
     );
   }
 
   signInOauth(
     authString: AuthString,
-  ): Effect.Effect<Option.Option<UserAuthDto>, UnknownProviderError | UnauthorizedError | Error> {
+  ): Effect.Effect<Option.Option<UserAuthDto>, UnauthorizedError | UnknownProviderError | InvalidCredentialsError> {
+    if (!authString) {
+      return Effect.fail(new UnauthorizedError());
+    }
+
     return pipe(
       this.getProviderUserInfo(authString),
-      Effect.andThen((providerUserId) => this.authServiceOptions.getUserByProviderId(providerUserId)),
+      Effect.andThen(this.authServiceOptions.getUserByProviderId),
       Effect.map(Option.map(this.toUserAuthDto)),
     );
   }
 
-  /* signUpOauth( */
-  /*   signUpDto: SignUpDto, */
-  /*   authString: AuthString, */
-  /* ): Effect.Effect<UserActivation, EmailAlreadyExistsError | UsernameAlreadyExistsError | Error> { */
-  /*   // Чекаем авториацию */
-  /*   // Проверяем email на уникальность -> BadRequest User with this email already exists */
-  /*   // Проверяем username на уникальность -> BadRequest User with this username already exists */
-  /*   // Создаем пользователя */
-  /*   // Создаеь social credentials */
-  /*   // Отдаем пользователя */
-  /*   return pipe(); */
-  /* } */
+  signUpOauth(
+    signUpDto: SignUpDto,
+    authString: AuthString,
+  ): Effect.Effect<UserAuthDto, UnauthorizedError | UnknownProviderError | InvalidCredentialsError> {
+    if (!authString) {
+      return Effect.fail(new UnauthorizedError());
+    }
 
-  getMe(userId: number): Effect.Effect<Option.Option<UserAuthDto>, Error> {
+    return pipe(
+      Effect.Do,
+      Effect.let('authInfo', () => this.parseAuthString(authString)),
+      Effect.bind('providerType', ({ authInfo: [authProvider] }) => {
+        return this.oauthFactoryService.getProvider(authProvider);
+      }),
+      Effect.bind('providerService', ({ authInfo: [authProvider] }) =>
+        this.oauthFactoryService.getProviderService(authProvider),
+      ),
+      Effect.bind('providerId', ({ providerService, authInfo: [_, authToken] }) =>
+        providerService.getUserInfo(authToken),
+      ),
+      Effect.andThen(({ providerId, providerType }) =>
+        this.authServiceOptions.createUserWithSocialCredentials({
+          username: Username(signUpDto.username),
+          providerId,
+          providerType,
+        }),
+      ),
+      Effect.map((user) => this.toUserAuthDto(user)),
+    );
+  }
+
+  getAuthUser(userId: number): Effect.Effect<Option.Option<UserAuthDto>> {
     return pipe(this.authServiceOptions.getUserById(userId), Effect.map(Option.map(this.toUserAuthDto)));
   }
 }

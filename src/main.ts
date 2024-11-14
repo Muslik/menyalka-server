@@ -5,10 +5,11 @@ import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
-import { NODE_ENV, config } from '~/infrastructure/config';
-import { SESSION_ID } from '~/infrastructure/decorators';
+
+import { NODE_ENV, config } from '~/config';
 
 import { AppModule } from './app.module';
+import { SESSION_ID } from './config/config.constants';
 
 const { port, host } = config();
 

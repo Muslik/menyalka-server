@@ -1,7 +1,7 @@
 import { Effect } from 'effect';
 
-import { Permission, PermissionInsert } from '~/infrastructure/database';
+import { Permission, PermissionInsert } from '~/libs/database';
 
 export interface IPermissionsRepository {
-  createPermissions(permissions: PermissionInsert[]): Effect.Effect<Permission[], Error>;
+  createPermissions(permissions: PermissionInsert[]): Effect.Effect<Permission[]>;
 }

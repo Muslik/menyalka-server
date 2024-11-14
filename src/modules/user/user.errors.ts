@@ -1,18 +1,19 @@
-import { BadRequestException } from '~/infrastructure/exceptions';
+import { ApiProperty } from '@nestjs/swagger';
 
-enum UserExceptionCodes {
-  RoleIdInvalid = 'USER.ROLE_ID_INVALID',
-  UserIdInvalid = 'USER.USER_ID_INVALID',
-}
+import { BadRequestException, ExceptionCodes } from '~/libs/exceptions';
 
 export class RoleIdInvalidError extends BadRequestException {
+  @ApiProperty({ enum: [ExceptionCodes.USER_ROLE_ID_INVALID], name: 'code' })
+  _tag = ExceptionCodes.USER_ROLE_ID_INVALID;
   constructor() {
-    super(UserExceptionCodes.RoleIdInvalid, 'RoleId is invalid');
+    super('RoleId is invalid');
   }
 }
 
 export class UserIdInvalidError extends BadRequestException {
+  @ApiProperty({ enum: [ExceptionCodes.USER_USER_ID_INVALID], name: 'code' })
+  _tag = ExceptionCodes.USER_USER_ID_INVALID;
   constructor() {
-    super(UserExceptionCodes.UserIdInvalid, 'UserId is invalid');
+    super('UserId is invalid');
   }
 }

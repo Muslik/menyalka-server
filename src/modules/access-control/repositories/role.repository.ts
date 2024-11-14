@@ -6,47 +6,48 @@ import {
   DrizzleRepositoryBase,
   RoleInsert,
   Role,
-  TransactionalAdapterDrizzle,
-  B,
-} from '~/infrastructure/database';
+  TransactionHost,
+  RoleId,
+  UserId,
+  PermissionId,
+} from '~/libs/database';
 
 import { IRoleRepository } from './role.repository.interface';
-import { TransactionHost } from '~/infrastructure/lib/effect/plugin-transactional';
 
 @Injectable()
 export class RoleRepository extends DrizzleRepositoryBase implements IRoleRepository {
   private readonly roles = this.schema.roles;
   private readonly rolesToPermissions = this.schema.rolesToPermissions;
   private readonly users = this.schema.users;
-  constructor(private readonly txHost: TransactionHost<TransactionalAdapterDrizzle>) {
+  constructor(private readonly txHost: TransactionHost) {
     super();
   }
 
-  getRoleById(roleId: B.RoleId): Effect.Effect<Option.Option<Role>, Error> {
+  getRoleById(roleId: RoleId): Effect.Effect<Option.Option<Role>> {
     return pipe(
-      Effect.tryPromise(() => this.txHost.tx.query.roles.findFirst({ where: (roles, { eq }) => eq(roles.id, roleId) })),
+      Effect.promise(() => this.txHost.tx.query.roles.findFirst({ where: (roles, { eq }) => eq(roles.id, roleId) })),
       Effect.map(Option.fromNullable),
     );
   }
 
-  createRoles(roles: RoleInsert[]): Effect.Effect<Role[], Error> {
-    return Effect.tryPromise(() => this.txHost.tx.insert(this.roles).values(roles).returning());
+  createRoles(roles: RoleInsert[]): Effect.Effect<Role[]> {
+    return Effect.promise(() => this.txHost.tx.insert(this.roles).values(roles).returning());
   }
 
-  deleteRole(roleId: B.RoleId): Effect.Effect<void, Error> {
-    return Effect.tryPromise(() => this.txHost.tx.delete(this.roles).where(eq(this.roles.id, roleId)));
+  deleteRole(roleId: RoleId): Effect.Effect<void> {
+    return Effect.promise(() => this.txHost.tx.delete(this.roles).where(eq(this.roles.id, roleId)));
   }
 
-  assignRoleToUser(roleId: B.RoleId, userId: B.UserId): Effect.Effect<void, Error> {
-    return Effect.tryPromise(() => this.txHost.tx.update(this.users).set({ roleId }).where(eq(this.users.id, userId)));
+  assignRoleToUser(roleId: RoleId, userId: UserId): Effect.Effect<void> {
+    return Effect.promise(() => this.txHost.tx.update(this.users).set({ roleId }).where(eq(this.users.id, userId)));
   }
 
-  assignPermissionToRole(roleId: B.RoleId, permissionId: B.PermissionId): Effect.Effect<void, Error> {
-    return Effect.tryPromise(() => this.txHost.tx.insert(this.rolesToPermissions).values({ roleId, permissionId }));
+  assignPermissionToRole(roleId: RoleId, permissionId: PermissionId): Effect.Effect<void> {
+    return Effect.promise(() => this.txHost.tx.insert(this.rolesToPermissions).values({ roleId, permissionId }));
   }
 
-  unassignPermissionFromRole(roleId: B.RoleId, permissionId: B.PermissionId): Effect.Effect<void, Error> {
-    return Effect.tryPromise(() =>
+  unassignPermissionFromRole(roleId: RoleId, permissionId: PermissionId): Effect.Effect<void> {
+    return Effect.promise(() =>
       this.txHost.tx
         .delete(this.rolesToPermissions)
         .where(and(eq(this.rolesToPermissions.permissionId, permissionId), eq(this.rolesToPermissions.roleId, roleId))),

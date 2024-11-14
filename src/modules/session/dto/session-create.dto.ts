@@ -1,7 +1,7 @@
-import { B } from "~/infrastructure/database";
+import { UserId } from '~/libs/database';
 
 export class SessionCreateDto {
   userAgent: string;
   ip: string;
-  userId: B.UserId
+  userId: UserId;
 }

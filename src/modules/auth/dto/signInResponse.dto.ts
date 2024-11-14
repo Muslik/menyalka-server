@@ -6,6 +6,6 @@ export enum SignInStatus {
 }
 
 export class SignInResponseDto {
-  @ApiProperty({ example: SignInStatus.success, enum: SignInStatus})
+  @ApiProperty({ example: SignInStatus.success, enum: SignInStatus })
   status: SignInStatus;
 }

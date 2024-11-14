@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { parse, validate } from '@telegram-apps/init-data-node';
 import { Effect, Exit } from 'effect';
 
-import { CONFIG_SERVICE, ConfigModule, IConfigService } from '~/infrastructure/config';
+import { Config, CONFIG_SERVICE } from '~/config';
 
 import { TelegramAuthService } from './telegram-auth.service';
 
@@ -12,7 +12,7 @@ vitest.mock('@telegram-apps/init-data-node', () => ({
   parse: vitest.fn(),
 }));
 
-const configMock: Partial<IConfigService> = {
+const configMock: Partial<Config> = {
   telegram: {
     botToken: 'someToken',
   },
@@ -23,7 +23,6 @@ describe('Telegram auth service', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [ConfigModule],
       providers: [
         {
           provide: CONFIG_SERVICE,
@@ -41,11 +40,11 @@ describe('Telegram auth service', () => {
   });
 
   describe('Validate auth data', () => {
-    it.effect('Should return user data on success autha ata validation', () =>
+    it.effect('Should return user data on success auth data validation', () =>
       Effect.gen(function* () {
-        (validate as Mock).mockImplementationOnce(() => ({ userName: 'superuser' }));
+        (validate as Mock).mockImplementationOnce(() => undefined);
         (parse as Mock).mockImplementationOnce(() => ({ userName: 'superuser' }));
-        const result = yield* telegramAuthService.validateAuthData('authData').pipe(Effect.exit);
+        const result = yield* Effect.exit(telegramAuthService.validateAuthData('authData'));
 
         expect(validate).toHaveBeenCalledWith('authData', configMock.telegram?.botToken);
         expect(result).toStrictEqual(Exit.succeed({ userName: 'superuser' }));
@@ -58,7 +57,8 @@ describe('Telegram auth service', () => {
           throw 'Invalid auth data';
         });
 
-        const result = yield* telegramAuthService.validateAuthData('authData').pipe(Effect.exit);
+        const result = yield* Effect.exit(telegramAuthService.validateAuthData('authData'));
+
         expect(Exit.isFailure(result)).toBe(true);
       }),
     );

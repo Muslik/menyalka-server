@@ -1,7 +1,7 @@
-import { B } from '~/infrastructure/database';
+import { ProviderId, Username } from '~/libs/database';
 
 export type UserWithSocialCredentialsDto = {
-  username: B.Username;
+  username: Username;
   providerType: string;
-  providerUserId: B.ProviderUserId;
+  providerId: ProviderId;
 };

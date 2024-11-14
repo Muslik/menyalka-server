@@ -1,11 +1,11 @@
-import { NotAllowedException } from '~/infrastructure/exceptions';
+import { ApiProperty } from '@nestjs/swagger';
 
-enum AccessControlExceptionCodes {
-  Read = 'ACCESS_CONTROL.READ',
-}
+import { ExceptionCodes, ForbiddenException } from '~/libs/exceptions';
 
-export class ReadOnlyRoleError extends NotAllowedException {
+export class ReadOnlyRoleError extends ForbiddenException {
+  @ApiProperty({ enum: [ExceptionCodes.ACCESS_CONTROL_READ_ONLY], name: 'code' })
+  _tag = ExceptionCodes.ACCESS_CONTROL_READ_ONLY;
   constructor() {
-    super(AccessControlExceptionCodes.Read, 'Read only role');
+    super('Read only role');
   }
 }

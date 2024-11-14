@@ -3,8 +3,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Effect, Exit } from 'effect';
 import { ClsModule } from 'nestjs-cls';
 
-import { RBAC } from '~/infrastructure/config';
-import { B } from '~/infrastructure/database';
+import { RBAC } from '~/config';
+import { PermissionId, RoleId } from '~/libs/database';
 
 import { ROLE_REPOSITORY } from '../access-control.constants';
 import { ReadOnlyRoleError } from '../access-control.errors';
@@ -19,8 +19,8 @@ const mockRepository = {
   unassignPermissionFromRole: vitest.fn(),
 } satisfies IRoleRepository;
 
-const NON_READ_ONLY_ROLE_ID = B.RoleId(-1);
-const NON_READ_ONLY_PERMISSION_ID = B.PermissionId(-1);
+const NON_READ_ONLY_ROLE_ID = RoleId(-1);
+const NON_READ_ONLY_PERMISSION_ID = PermissionId(-1);
 
 describe('Access control service', () => {
   let accessControlService: AccessControlService;
@@ -74,7 +74,7 @@ describe('Access control service', () => {
       Effect.gen(function* () {
         mockRepository.deleteRole.mockReturnValueOnce(Effect.succeed(undefined));
 
-        const result = yield* accessControlService.deleteRole(B.RoleId(RBAC.RoleId.User)).pipe(Effect.exit);
+        const result = yield* accessControlService.deleteRole(RoleId(RBAC.RoleId.User)).pipe(Effect.exit);
 
         expect(mockRepository.deleteRole).not.toHaveBeenCalled();
         expect(result).toStrictEqual(Exit.fail(new ReadOnlyRoleError()));
@@ -104,7 +104,7 @@ describe('Access control service', () => {
         mockRepository.assignPermissionToRole.mockReturnValueOnce(Effect.succeed(undefined));
 
         const result = yield* accessControlService
-          .assignPermissionToRole(B.RoleId(RBAC.RoleId.User), B.PermissionId(2))
+          .assignPermissionToRole(RoleId(RBAC.RoleId.User), PermissionId(2))
           .pipe(Effect.exit);
 
         expect(mockRepository.assignPermissionToRole).not.toHaveBeenCalled();
@@ -115,13 +115,12 @@ describe('Access control service', () => {
 
   describe('Unassign permission from role', () => {
     it.effect('Should unassign permission from role', () =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         mockRepository.unassignPermissionFromRole.mockReturnValueOnce(Effect.succeed(undefined));
 
-        const result = yield* accessControlService.unassignPermissionFromRole(
-          NON_READ_ONLY_ROLE_ID,
-          NON_READ_ONLY_PERMISSION_ID,
-        ).pipe(Effect.exit);
+        const result = yield* accessControlService
+          .unassignPermissionFromRole(NON_READ_ONLY_ROLE_ID, NON_READ_ONLY_PERMISSION_ID)
+          .pipe(Effect.exit);
 
         expect(mockRepository.unassignPermissionFromRole).toHaveBeenCalledWith(
           NON_READ_ONLY_ROLE_ID,
@@ -132,13 +131,12 @@ describe('Access control service', () => {
     );
 
     it.effect('Should return an error if role is read-only', () =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         mockRepository.unassignPermissionFromRole.mockReturnValueOnce(Effect.succeed(undefined));
 
-        const result = yield* accessControlService.unassignPermissionFromRole(
-          B.RoleId(RBAC.RoleId.User),
-          B.PermissionId(2),
-        ).pipe(Effect.exit);
+        const result = yield* accessControlService
+          .unassignPermissionFromRole(RoleId(RBAC.RoleId.User), PermissionId(2))
+          .pipe(Effect.exit);
 
         expect(mockRepository.unassignPermissionFromRole).not.toHaveBeenCalled();
         expect(result).toStrictEqual(Exit.fail(new ReadOnlyRoleError()));

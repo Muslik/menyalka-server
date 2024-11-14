@@ -1,11 +1,11 @@
 import { Effect, Option } from 'effect';
 
-import { B, Role, RoleInsert } from '~/infrastructure/database';
+import { PermissionId, Role, RoleId, RoleInsert } from '~/libs/database';
 
 export interface IRoleRepository {
-  getRoleById(roleId: B.RoleId): Effect.Effect<Option.Option<Role>, Error>;
-  createRoles(roles: RoleInsert[]): Effect.Effect<Role[], Error>;
-  deleteRole(roleId: B.RoleId): Effect.Effect<void, Error>;
-  assignPermissionToRole(roleId: B.RoleId, permissionId: B.PermissionId): Effect.Effect<void, Error>;
-  unassignPermissionFromRole(roleId: B.RoleId, permissionId: B.PermissionId): Effect.Effect<void, Error>;
+  getRoleById(roleId: RoleId): Effect.Effect<Option.Option<Role>>;
+  createRoles(roles: RoleInsert[]): Effect.Effect<Role[]>;
+  deleteRole(roleId: RoleId): Effect.Effect<void>;
+  assignPermissionToRole(roleId: RoleId, permissionId: PermissionId): Effect.Effect<void>;
+  unassignPermissionFromRole(roleId: RoleId, permissionId: PermissionId): Effect.Effect<void>;
 }

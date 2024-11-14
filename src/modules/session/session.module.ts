@@ -1,8 +1,7 @@
 import { RedisService } from '@liaoliaots/nestjs-redis';
 import { Module } from '@nestjs/common';
 
-import { RedisStorageService } from '~/infrastructure/storage/redis-storage.service';
-import { STORAGE_SERVICE } from '~/infrastructure/storage/storage.service.constants';
+import { RedisStorageService, STORAGE_SERVICE } from '~/libs/storage';
 
 import { SESSION_SERVICE, SESSIONS_STORAGE_NAME } from './session.constants';
 import { SessionService } from './session.service';

@@ -1,9 +1,7 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { FactoryProvider, ModuleMetadata } from '@nestjs/common';
 
-import { ConfigModule } from '~/infrastructure/config';
-
-import { AUTH_SERVICE, AUTH_SERVICE_OPTIONS, TELEGRAM_OAUTH_SERVICE } from './auth.constants';
+import { AUTH_SERVICE, AUTH_SERVICE_OPTIONS, OAUTH_FACTORY_SERIVCE, TELEGRAM_OAUTH_SERVICE } from './auth.constants';
 import { AuthController } from './auth.controller';
 import { IAuthServiceOptions } from './interfaces/authServiceOptions.interface';
 import { AuthService } from './services/auth/auth.service';
@@ -16,9 +14,11 @@ interface AuthModuleAsyncOptions extends Pick<ModuleMetadata, 'imports'> {
 }
 
 @Module({
-  imports: [ConfigModule],
   providers: [
-    OAuthFactoryService,
+    {
+      provide: OAUTH_FACTORY_SERIVCE,
+      useClass: OAuthFactoryService,
+    },
     {
       provide: AUTH_SERVICE,
       useClass: AuthService,

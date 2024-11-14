@@ -1,8 +1,10 @@
 import { Effect } from 'effect';
-import { UnauthorizedError } from '../../auth.errors';
-import { B } from '~/infrastructure/database';
-import { AuthData } from '../auth/auth.service.interface';
+
+import { ProviderId } from '~/libs/database';
+
+import { InvalidCredentialsError } from '../../auth.errors';
+import { AuthToken } from '../auth/auth.service.interface';
 
 export interface IOauthProvider {
-  getUserInfo(authData: AuthData): Effect.Effect<B.ProviderUserId, UnauthorizedError>;
+  getUserInfo(authData: AuthToken): Effect.Effect<ProviderId, InvalidCredentialsError>;
 }
